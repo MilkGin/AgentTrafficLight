@@ -1,0 +1,26 @@
+# 打包产物
+build/
+dist/
+*.spec.bak
+
+# Python 缓存
+__pycache__/
+*.py[cod]
+*.egg-info/
+
+# 临时调试 / 探针脚本（开发期产物，不纳入发布）
+_*.py
+
+# 测试截图与调试输出
+*.png
+*.bmp
+*.txt
+
+# 运行时生成的临时文件
+.menu_opened
+*.log
+
+# 编辑器 / 系统
+.vscode/
+.idea/
+.DS_Store
