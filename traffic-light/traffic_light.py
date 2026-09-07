@@ -58,8 +58,13 @@ _CANDIDATES = [
     os.path.join(os.environ.get("APPDATA", ""), "CodeBuddy CN", "codebuddy-sessions.vscdb"),
     os.path.join(os.environ.get("APPDATA", ""), "CodeBuddy", "codebuddy-sessions.vscdb"),
 ]
-_FAIL_STATES = {"failed", "error", "aborted", "cancelled", "canceled", "timeout", "paused", "needs_input"}
-_WORK_STATES = {"working", "streaming", "running", "pending", "queued"}
+# 红灯：仅“阻塞在用户”的状态（需确认 / 输入 / 暂停等待处理）才亮红灯。
+# 注意：cancelled/aborted/failed/error/timeout 等“任务终止”状态，尤其是
+# 用户主动删除未结束任务后留下的 cancelled/aborted/failed，不应亮红灯，否则会“常红”。
+_RED_STATES = {"needs_input", "paused", "waiting", "confirm", "blocked", "permission", "intervention"}
+# 黄灯：正在执行
+_WORK_STATES = {"working", "streaming", "running", "pending", "queued", "busy"}
+# 其余状态（completed/failed/error/cancelled/aborted/timeout/deleted/removed/空/未知）一律不亮红灯
 
 try:
     import sqlite3
@@ -89,7 +94,7 @@ def read_codebuddy_state():
     except Exception:
         return None
 
-    working = failed = other = 0
+    working = red = other = 0
     titles = []
     for (val,) in rows:
         try:
@@ -106,20 +111,20 @@ def read_codebuddy_state():
         if st in _WORK_STATES:
             working += 1
             titles.append(title)
-        elif st in _FAIL_STATES:
-            failed += 1
+        elif st in _RED_STATES:
+            red += 1
             titles.append(title)
         else:
             other += 1
-    total = working + failed + other
-    if failed > 0:
-        return {"state": "red", "detail": f"CodeBuddy: {failed} 个会话需确认/暂停",
-                "working": working, "failed": failed, "total": total, "titles": titles}
+    total = working + red + other
+    if red > 0:
+        return {"state": "red", "detail": f"CodeBuddy: {red} 个会话需确认/暂停",
+                "working": working, "red": red, "total": total, "titles": titles}
     if working > 0:
         return {"state": "yellow", "detail": f"CodeBuddy: {working} 个会话进行中",
-                "working": working, "failed": failed, "total": total, "titles": titles}
+                "working": working, "red": red, "total": total, "titles": titles}
     return {"state": "green", "detail": "CodeBuddy: 全部会话空闲/完成",
-            "working": working, "failed": failed, "total": total, "titles": titles}
+            "working": working, "red": red, "total": total, "titles": titles}
 
 
 def load_config():
